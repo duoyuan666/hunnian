@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>相亲文案图片生成器</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        .content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            padding: 30px;
+        }
+
+        .section-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #555;
+        }
+
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+        }
+
+        .form-group textarea {
+            min-height: 200px;
+            resize: vertical;
+        }
+
+        .slider-group {
+            margin-bottom: 20px;
+        }
+
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        input[type="range"] {
+            width: 100%;
+        }
+
+        .bg-options {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+            max-height: 400px;
+            overflow-y: auto;
+            padding: 10px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+        }
+
+        .bg-option {
+            position: relative;
+        }
+
+        .bg-option input[type="radio"] {
+            position: absolute;
+            opacity: 0;
+        }
+
+        .bg-option label {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+            padding: 8px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .bg-option input[type="radio"]:checked + label {
+            border-color: #667eea;
+            background: #f0f4ff;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+        }
+
+        .bg-preview {
+            width: 100%;
+            height: 60px;
+            border-radius: 4px;
+            border: 1px solid rgba(0,0,0,0.1);
+        }
+
+        .bg-name {
+            font-size: 10px;
+            text-align: center;
+            color: #666;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 14px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #f5f5f5;
+            color: #333;
+        }
+
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        .canvas-wrapper {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f9f9f9;
+            border-radius: 8px;
+        }
+
+        .canvas-label {
+            margin-bottom: 10px;
+            font-weight: 600;
+            color: #667eea;
+        }
+
+        canvas {
+            width: 100%;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        @media (max-width: 1024px) {
+            .content {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📸 相亲文案图片生成器</h1>
+            <p>海量精美背景，一键生成专业相亲图片</p>
+        </div>
+
+        <div class="content">
+            <div class="editor-section">
+                <div class="section-title">✏️ 编辑内容</div>
+
+                <div class="form-group">
+                    <label>📝 标题（第一页）</label>
+                    <input type="text" id="title" value="成都28岁大厂工程师 有房有车有贷">
+                </div>
+
+                <div class="form-group">
+                    <label>📄 内容</label>
+                    <textarea id="content">28岁，湖南长沙仔子，在成都学习工作8年已扎根，身高178cm，体重72kg，本科毕业于电子科技大学，目前是某互联网大厂的后端开发工程师，税后年入35w+
+
+独生子，父母是长沙国企退休职工，养老无忧，家庭氛围超级民主和睦，是我最坚实的后盾
+
+典型的INTP性格，工作中是理性严谨的代码工，生活里是热衷探索的体验家，情绪稳定，讲道理好沟通
+
+向往的爱情，是70%的踏实日常+30%的意外惊喜，我们既能各自在事业上努力奋斗，也能一起分享生活的琐碎与温暖</textarea>
+                </div>
+
+                <div class="slider-group">
+                    <div class="slider-label">
+                        <span>📏 边距</span>
+                        <span id="paddingValue">60px</span>
+                    </div>
+                    <input type="range" id="padding" min="40" max="120" value="60" 
+                           oninput="document.getElementById('paddingValue').textContent = this.value + 'px'">
+                </div>
+
+                <div class="form-group">
+                    <label>🎨 背景样式（共42种）</label>
+                    <div class="bg-options" id="bgOptions">
+                        <!-- 背景选项将通过JS动态生成 -->
+                    </div>
+                </div>
+
+                <div class="button-group">
+                    <button class="btn btn-primary" onclick="generate()">
+                        <span>🎨 生成</span>
+                    </button>
+                    <button class="btn btn-secondary" onclick="exportImg()">
+                        <span>💾 导出</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="preview-section">
+                <div class="section-title">👀 预览</div>
+                <div id="preview">
+                    <div style="text-align: center; padding: 60px 20px; color: #999;">
+                        点击生成预览
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let canvasList = [];
+
+        // 背景配置数据
+        const backgrounds = [
+            // 纯色系列
+            { id: 'black', name: '经典黑', type: 'solid', color: '#000000', textColor: '#FFFFFF' },
+            { id: 'white', name: '纯净白', type: 'solid', color: '#FFFFFF', textColor: '#000000' },
+            { id: 'navy', name: '深海蓝', type: 'solid', color: '#1a1a2e', textColor: '#FFFFFF' },
+            { id: 'wine', name: '酒红色', type: 'solid', color: '#3d1e28', textColor: '#FFFFFF' },
+            { id: 'forest', name: '墨绿色', type: 'solid', color: '#1e3a20', textColor: '#FFFFFF' },
+            { id: 'gray', name: '高级灰', type: 'solid', color: '#2c2c2c', textColor: '#FFFFFF' },
+            { id: 'cream', name: '米白色', type: 'solid', color: '#f5f5dc', textColor: '#000000' },
+            { id: 'beige', name: '米黄色', type: 'solid', color: '#f5e6d3', textColor: '#333333' },
+            { id: 'lightgray', name: '浅灰色', type: 'solid', color: '#e8e8e8', textColor: '#333333' },
+            
+            // 渐变色系列 - 紫色系
+            { id: 'grad1', name: '梦幻紫', type: 'gradient', colors: ['#667eea', '#764ba2'], textColor: '#FFFFFF' },
+            { id: 'grad2', name: '薰衣草', type: 'gradient', colors: ['#a8c0ff', '#3f2b96'], textColor: '#FFFFFF' },
+            { id: 'grad3', name: '神秘紫', type: 'gradient', colors: ['#8E2DE2', '#4A00E0'], textColor: '#FFFFFF' },
+            
+            // 蓝色系
+            { id: 'grad4', name: '海洋蓝', type: 'gradient', colors: ['#2193b0', '#6dd5ed'], textColor: '#FFFFFF' },
+            { id: 'grad5', name: '天空蓝', type: 'gradient', colors: ['#4facfe', '#00f2fe'], textColor: '#FFFFFF' },
+            { id: 'grad6', name: '深海蓝', type: 'gradient', colors: ['#134E5E', '#71B280'], textColor: '#FFFFFF' },
+            { id: 'grad7', name: '冰川蓝', type: 'gradient', colors: ['#00c6ff', '#0072ff'], textColor: '#FFFFFF' },
+            
+            // 粉红色系
+            { id: 'grad8', name: '浪漫粉', type: 'gradient', colors: ['#f093fb', '#f5576c'], textColor: '#FFFFFF' },
+            { id: 'grad9', name: '樱花粉', type: 'gradient', colors: ['#ffecd2', '#fcb69f'], textColor: '#333333' },
+            { id: 'grad10', name: '桃心粉', type: 'gradient', colors: ['#ff9a9e', '#fecfef'], textColor: '#333333' },
+            
+            // 橙黄色系
+            { id: 'grad11', name: '日落橙', type: 'gradient', colors: ['#fa709a', '#fee140'], textColor: '#333333' },
+            { id: 'grad12', name: '金色阳光', type: 'gradient', colors: ['#f7971e', '#ffd200'], textColor: '#333333' },
+            { id: 'grad13', name: '柠檬黄', type: 'gradient', colors: ['#f6d365', '#fda085'], textColor: '#333333' },
+            
+            // 绿色系
+            { id: 'grad14', name: '森林绿', type: 'gradient', colors: ['#0ba360', '#3cba92'], textColor: '#FFFFFF' },
+            { id: 'grad15', name: '薄荷绿', type: 'gradient', colors: ['#a8edea', '#fed6e3'], textColor: '#333333' },
+            { id: 'grad16', name: '翡翠绿', type: 'gradient', colors: ['#00b09b', '#96c93d'], textColor: '#FFFFFF' },
+            
+            // 红色系
+            { id: 'grad17', name: '玫瑰红', type: 'gradient', colors: ['#eb3349', '#f45c43'], textColor: '#FFFFFF' },
+            { id: 'grad18', name: '火焰红', type: 'gradient', colors: ['#fc4a1a', '#f7b733'], textColor: '#FFFFFF' },
+            
+            // 混合色系
+            { id: 'grad19', name: '彩虹糖', type: 'gradient', colors: ['#4facfe', '#00f2fe'], textColor: '#FFFFFF' },
+            { id: 'grad20', name: '极光', type: 'gradient', colors: ['#fa709a', '#fee140', '#30cfd0'], textColor: '#333333' },
+            { id: 'grad21', name: '霓虹灯', type: 'gradient', colors: ['#f857a6', '#ff5858'], textColor: '#FFFFFF' },
+            
+            // 纸质纹理系列
+            { id: 'note', name: '便签纸', type: 'note', textColor: '#333333' },
+            { id: 'grid', name: '方格纸', type: 'grid', textColor: '#000000' },
+            { id: 'lined', name: '横线纸', type: 'lined', textColor: '#000000' },
+            { id: 'dot', name: '点阵纸', type: 'dot', textColor: '#000000' },
+            
+            // 高级渐变
+            { id: 'grad22', name: '晨曦', type: 'gradient', colors: ['#ff9966', '#ff5e62'], textColor: '#FFFFFF' },
+            { id: 'grad23', name: '黄昏', type: 'gradient', colors: ['#ff6e7f', '#bfe9ff'], textColor: '#333333' },
+            { id: 'grad24', name: '星空', type: 'gradient', colors: ['#0f2027', '#203a43', '#2c5364'], textColor: '#FFFFFF' },
+            { id: 'grad25', name: '极地', type: 'gradient', colors: ['#ffd89b', '#19547b'], textColor: '#FFFFFF' },
+            { id: 'grad26', name: '深渊', type: 'gradient', colors: ['#2c3e50', '#3498db'], textColor: '#FFFFFF' },
+            { id: 'grad27', name: '樱桃', type: 'gradient', colors: ['#eb3349', '#f45c43'], textColor: '#FFFFFF' },
+        ];
+
+        // 动态生成背景选项
+        function initBackgrounds() {
+            const container = document.getElementById('bgOptions');
+            backgrounds.forEach((bg, index) => {
+                const option = document.createElement('div');
+                option.className = 'bg-option';
+                
+                const input = document.createElement('input');
+                input.type = 'radio';
+                input.name = 'bgStyle';
+                input.id = `bg-${bg.id}`;
+                input.value = bg.id;
+                if (index === 0) input.checked = true;
+                
+                const label = document.createElement('label');
+                label.htmlFor = `bg-${bg.id}`;
+                
+                const preview = document.createElement('div');
+                preview.className = 'bg-preview';
+                
+                if (bg.type === 'solid') {
+                    preview.style.background = bg.color;
+                } else if (bg.type === 'gradient') {
+                    preview.style.background = `linear-gradient(135deg, ${bg.colors.join(', ')})`;
+                } else if (bg.type === 'note') {
+                    preview.style.background = 'linear-gradient(to bottom, #fef9e7 0%, #fef5d4 100%)';
+                } else if (bg.type === 'grid') {
+                    preview.style.background = 'white';
+                    preview.style.backgroundImage = 'linear-gradient(#e0e0e0 1px, transparent 1px), linear-gradient(90deg, #e0e0e0 1px, transparent 1px)';
+                    preview.style.backgroundSize = '20px 20px';
+                } else if (bg.type === 'lined') {
+                    preview.style.background = 'white';
+                    preview.style.backgroundImage = 'repeating-linear-gradient(0deg, #e0e0e0, #e0e0e0 1px, transparent 1px, transparent 30px)';
+                } else if (bg.type === 'dot') {
+                    preview.style.background = 'white';
+                    preview.style.backgroundImage = 'radial-gradient(circle, #e0e0e0 1px, transparent 1px)';
+                    preview.style.backgroundSize = '20px 20px';
+                }
+                
+                const name = document.createElement('span');
+                name.className = 'bg-name';
+                name.textContent = bg.name;
+                
+                label.appendChild(preview);
+                label.appendChild(name);
+                option.appendChild(input);
+                option.appendChild(label);
+                container.appendChild(option);
+            });
+        }
+
+        function splitContent(text, maxChars) {
+            const lines = text.split('\n').filter(l => l.trim());
+            const pages = [];
+            let current = [];
+            let count = 0;
+
+            for (let line of lines) {
+                if (count + line.length > maxChars && current.length > 0) {
+                    pages.push(current.join('\n'));
+                    current = [line];
+                    count = line.length;
+                } else {
+                    current.push(line);
+                    count += line.length;
+                }
+            }
+
+            if (current.length > 0) {
+                pages.push(current.join('\n'));
+            }
+
+            return pages.length > 0 ? pages : [text];
+        }
+
+        function wrapText(ctx, text, maxWidth) {
+            const chars = text.split('');
+            const lines = [];
+            let line = '';
+
+            for (let char of chars) {
+                const test = line + char;
+                const width = ctx.measureText(test).width;
+                if (width > maxWidth && line) {
+                    lines.push(line);
+                    line = char;
+                } else {
+                    line = test;
+                }
+            }
+
+            if (line) lines.push(line);
+            return lines;
+        }
+
+        function drawBg(ctx, w, h, bgId) {
+            const bg = backgrounds.find(b => b.id === bgId);
+            if (!bg) return '#000';
+
+            if (bg.type === 'solid') {
+                ctx.fillStyle = bg.color;
+                ctx.fillRect(0, 0, w, h);
+            } else if (bg.type === 'gradient') {
+                const gradient = ctx.createLinearGradient(0, 0, w, h);
+                bg.colors.forEach((color, i) => {
+                    gradient.addColorStop(i / (bg.colors.length - 1), color);
+                });
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, w, h);
+            } else if (bg.type === 'note') {
+                const grad = ctx.createLinearGradient(0, 0, 0, h);
+                grad.addColorStop(0, '#fef9e7');
+                grad.addColorStop(1, '#fef5d4');
+                ctx.fillStyle = grad;
+                ctx.fillRect(0, 0, w, h);
+                
+                ctx.strokeStyle = '#e8dcc0';
+                ctx.lineWidth = 3;
+                for (let i = 0; i < w; i += 20) {
+                    ctx.beginPath();
+                    ctx.moveTo(i, 0);
+                    ctx.lineTo(i + 10, 0);
+                    ctx.stroke();
+                }
+            } else if (bg.type === 'grid') {
+                ctx.fillStyle = '#fff';
+                ctx.fillRect(0, 0, w, h);
+                
+                ctx.strokeStyle = '#e0e0e0';
+                ctx.lineWidth = 1;
+                for (let i = 0; i <= w; i += 40) {
+                    ctx.beginPath();
+                    ctx.moveTo(i, 0);
+                    ctx.lineTo(i, h);
+                    ctx.stroke();
+                }
+                for (let i = 0; i <= h; i += 40) {
+                    ctx.beginPath();
+                    ctx.moveTo(0, i);
+                    ctx.lineTo(w, i);
+                    ctx.stroke();
+                }
+            } else if (bg.type === 'lined') {
+                ctx.fillStyle = '#fff';
+                ctx.fillRect(0, 0, w, h);
+                
+                ctx.strokeStyle = '#e0e0e0';
+                ctx.lineWidth = 1;
+                for (let i = 60; i < h; i += 60) {
+                    ctx.beginPath();
+                    ctx.moveTo(0, i);
+                    ctx.lineTo(w, i);
+                    ctx.stroke();
+                }
+            } else if (bg.type === 'dot') {
+                ctx.fillStyle = '#fff';
+                ctx.fillRect(0, 0, w, h);
+                
+                ctx.fillStyle = '#e0e0e0';
+                for (let x = 0; x < w; x += 20) {
+                    for (let y = 0; y < h; y += 20) {
+                        ctx.beginPath();
+                        ctx.arc(x, y, 1.5, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+            }
+
+            return bg.textColor;
+        }
+
+        function generate() {
+            const title = document.getElementById('title').value;
+            const content = document.getElementById('content').value;
+            const padding = parseInt(document.getElementById('padding').value);
+            const bgStyle = document.querySelector('input[name="bgStyle"]:checked').value;
+
+            if (!title || !content) {
+                alert('请填写标题和内容');
+                return;
+            }
+
+            const pages = splitContent(content, 350);
+            canvasList = [];
+
+            const preview = document.getElementById('preview');
+            preview.innerHTML = '';
+
+            pages.forEach((pageContent, idx) => {
+                const wrap = document.createElement('div');
+                wrap.className = 'canvas-wrapper';
+
+                const label = document.createElement('div');
+                label.className = 'canvas-label';
+                label.textContent = `第 ${idx + 1} 页 / 共 ${pages.length} 页`;
+
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+
+                canvas.width = 1080;
+                canvas.height = 1440;
+
+                const textColor = drawBg(ctx, 1080, 1440, bgStyle);
+                ctx.fillStyle = textColor;
+
+                let y = 100;
+
+                if (idx === 0) {
+                    ctx.font = 'bold 64px "Microsoft YaHei"';
+                    const titleLines = wrapText(ctx, title, 1080 - padding * 2);
+                    titleLines.forEach(line => {
+                        ctx.fillText(line, padding, y);
+                        y += 80;
+                    });
+                    y += 40;
+                }
+
+                ctx.font = '48px "Microsoft YaHei"';
+                const lines = pageContent.split('\n');
+                lines.forEach(line => {
+                    if (line.trim()) {
+                        const wrapped = wrapText(ctx, line, 1080 - padding * 2);
+                        wrapped.forEach(l => {
+                            if (y < 1340) {
+                                ctx.fillText(l, padding, y);
+                                y += 70;
+                            }
+                        });
+                        y += 20;
+                    }
+                });
+
+                if (pages.length > 1) {
+                    ctx.font = '36px "Microsoft YaHei"';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(`${idx + 1}/${pages.length}`, 540, 1390);
+                }
+
+                wrap.appendChild(label);
+                wrap.appendChild(canvas);
+                preview.appendChild(wrap);
+                canvasList.push(canvas);
+            });
+        }
+
+        async function exportImg() {
+            if (canvasList.length === 0) {
+                alert('请先生成预览');
+                return;
+            }
+
+            if (canvasList.length === 1) {
+                canvasList[0].toBlob(blob => {
+                    saveAs(blob, '相亲文案.png');
+                });
+            } else {
+                const zip = new JSZip();
+                for (let i = 0; i < canvasList.length; i++) {
+                    const blob = await new Promise(resolve => {
+                        canvasList[i].toBlob(resolve, 'image/png');
+                    });
+                    zip.file(`相亲文案_${i + 1}.png`, blob);
+                }
+                const zipBlob = await zip.generateAsync({type: 'blob'});
+                saveAs(zipBlob, '相亲文案.zip');
+            }
+        }
+
+        window.onload = function() {
+            initBackgrounds();
+            generate();
+        };
+    </script>
+</body>
+</html>
